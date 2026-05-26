@@ -12,8 +12,8 @@
 
 ![QueryDemo](./media/sql.png)
 ![RagDemo](./media/rag.png)
-![VoiceDemo](./voice.png)
-![SemanticCacheDemo](./semantic-cache.png)
+![VoiceDemo](./media/voice.png)
+![SemanticCacheDemo](./media/semantic-cache.png)
 
 ---
 
