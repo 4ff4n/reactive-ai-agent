@@ -1,0 +1,47 @@
+# Core
+fastapi==0.111.0
+uvicorn[standard]==0.29.0
+websockets==12.0
+python-dotenv==1.0.1
+httpx==0.27.0
+
+# LangChain — no strict pins, let pip resolve a compatible set
+langchain>=0.2.10
+langchain-openai>=0.1.13
+langchain-community>=0.2.10
+langchain-core>=0.2.22
+langchain-text-splitters>=0.2.2
+
+# LangGraph
+langgraph>=0.1.19
+
+# LangFuse
+langfuse>=2.36.1,<3.0.0
+
+# Database
+sqlalchemy[asyncio]==2.0.30
+asyncpg==0.29.0
+psycopg2-binary==2.9.9
+alembic==1.13.1
+
+# Vector store / RAG / Semantic cache
+faiss-cpu==1.8.0
+tiktoken==0.7.0
+numpy==1.26.4
+
+# Memory / Cache
+redis==5.0.4
+aioredis==2.0.1
+
+# Voice
+pydub==0.25.1
+gTTS==2.5.1
+
+# Data generation
+faker==25.0.0
+
+# Utilities
+pydantic==2.7.3
+pydantic-settings==2.3.0
+python-multipart==0.0.9
+aiofiles==23.2.1

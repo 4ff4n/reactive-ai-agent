@@ -1,0 +1,102 @@
+[
+  {
+    "question": "Top 5 products by revenue",
+    "sql_query": "SELECT p.name, SUM(oi.line_total) AS revenue FROM order_items oi JOIN products p ON oi.product_id = p.id JOIN orders o ON oi.order_id = o.id WHERE o.status NOT IN ('cancelled', 'refunded') GROUP BY p.name ORDER BY revenue DESC LIMIT 5",
+    "explanation": "Sums line_total per product excluding cancelled/refunded orders to find the top 5 products by revenue."
+  },
+  {
+    "question": "Best performing products by sales",
+    "sql_query": "SELECT p.name, SUM(oi.quantity) AS total_quantity_sold FROM order_items oi JOIN products p ON oi.product_id = p.id JOIN orders o ON oi.order_id = o.id WHERE o.status NOT IN ('cancelled', 'refunded') GROUP BY p.name ORDER BY total_quantity_sold DESC LIMIT 50",
+    "explanation": "Sums the quantity sold per product excluding cancelled/refunded orders to find the best performing products by sales quantity."
+  },
+  {
+    "question": "Best 5 products by sales",
+    "sql_query": "SELECT p.name, SUM(oi.quantity) AS total_quantity_sold FROM order_items oi JOIN products p ON oi.product_id = p.id JOIN orders o ON oi.order_id = o.id WHERE o.status NOT IN ('cancelled', 'refunded') GROUP BY p.name ORDER BY total_quantity_sold DESC LIMIT 5",
+    "explanation": "Sums the quantity sold per product excluding cancelled/refunded orders to find the best 5 products by sales quantity."
+  },
+  {
+    "question": "Show me revenue grouped by customer tier and fulfillment status combined",
+    "sql_query": "SELECT c.is_premium, o.status, SUM(oi.line_total) AS revenue FROM orders o JOIN order_items oi ON o.id = oi.order_id JOIN customers c ON o.customer_id = c.id WHERE o.status NOT IN ('cancelled', 'refunded') GROUP BY c.is_premium, o.status ORDER BY revenue DESC LIMIT 50",
+    "explanation": "Sums the revenue from order_items grouped by customer tier (premium or not) and order fulfillment status, excluding cancelled/refunded orders."
+  },
+  {
+    "question": "Compare cancelled vs refunded orders by product category and month",
+    "sql_query": "SELECT date_trunc('month', o.created_at) AS month, cat.name AS category, o.status, COUNT(*) AS order_count FROM orders o JOIN order_items oi ON o.id = oi.order_id JOIN products p ON oi.product_id = p.id JOIN categories cat ON p.category_id = cat.id WHERE o.status IN ('cancelled', 'refunded') GROUP BY month, cat.name, o.status ORDER BY month, cat.name, o.status LIMIT 50",
+    "explanation": "Counts the number of cancelled and refunded orders grouped by product category and month, using date_trunc to aggregate by month."
+  },
+  {
+    "question": "Show me products where the ratio of reviews to orders is less than 0.1",
+    "sql_query": "SELECT p.name, COUNT(r.id) AS review_count, COUNT(DISTINCT oi.order_id) AS order_count, ROUND(CAST(COUNT(r.id) AS NUMERIC) / NULLIF(COUNT(DISTINCT oi.order_id), 0), 2) AS review_to_order_ratio FROM products p LEFT JOIN reviews r ON p.id = r.product_id LEFT JOIN order_items oi ON p.id = oi.product_id LEFT JOIN orders o ON oi.order_id = o.id WHERE o.status NOT IN ('cancelled', 'refunded') GROUP BY p.id HAVING ROUND(CAST(COUNT(r.id) AS NUMERIC) / NULLIF(COUNT(DISTINCT oi.order_id), 0), 2) < 0.1 LIMIT 50",
+    "explanation": "Calculates the ratio of reviews to distinct orders for each product, excluding cancelled/refunded orders, and filters for products where this ratio is less than 0.1."
+  },
+  {
+    "question": "List customers who ordered every product category at least once",
+    "sql_query": "SELECT c.id, c.first_name, c.last_name FROM customers c WHERE NOT EXISTS (SELECT 1 FROM categories cat WHERE NOT EXISTS (SELECT 1 FROM orders o JOIN order_items oi ON o.id = oi.order_id JOIN products p ON oi.product_id = p.id WHERE o.customer_id = c.id AND p.category_id = cat.id AND o.status NOT IN ('cancelled', 'refunded'))) LIMIT 50",
+    "explanation": "Finds customers who have placed at least one order for a product in every category, excluding cancelled/refunded orders."
+  },
+  {
+    "question": "test self-heal",
+    "sql_query": "SELECT p.name, SUM(oi.quantity * oi.unit_price) AS total FROM products p JOIN order_items oi ON p.id = oi.product_id GROUP BY p.name ORDER BY total DESC LIMIT 5",
+    "explanation": "The error occurred because the 'revenue' column does not exist in the 'products' table. To calculate the total revenue for each product, we need to multiply the 'quantity' by the 'unit_price' from the 'order_items' table and sum these values. The corrected query calculates the total revenue by using the 'quantity' and 'unit_price' columns from the 'order_items' table."
+  },
+  {
+    "question": "Show me total sales using products.revenue column grouped by category",
+    "sql_query": "SELECT cat.name AS category_name, SUM(oi.line_total) AS total_sales FROM order_items oi JOIN products p ON oi.product_id = p.id JOIN categories cat ON p.category_id = cat.id JOIN orders o ON oi.order_id = o.id WHERE o.status NOT IN ('cancelled', 'refunded') GROUP BY cat.name ORDER BY total_sales DESC LIMIT 50",
+    "explanation": "Sums the line_total from order_items for each product category, excluding cancelled/refunded orders, to calculate total sales grouped by category."
+  },
+  {
+    "question": "Show me top products using the products.profit_margin column sorted by highest margin",
+    "sql_query": "SELECT p.name, (p.price - p.cost) / p.price * 100 AS profit_margin FROM products p WHERE p.is_active = TRUE ORDER BY profit_margin DESC LIMIT 50",
+    "explanation": "Calculates the profit margin for each active product as a percentage and sorts them by highest margin."
+  },
+  {
+    "question": "List orders where customers.tier = 'gold' in the last 30 days",
+    "sql_query": "SELECT o.id, o.customer_id, o.total_amount, o.status, o.created_at FROM orders o JOIN customers c ON o.customer_id = c.id WHERE c.is_premium = true AND o.created_at >= NOW() - INTERVAL '30 days' AND o.status NOT IN ('cancelled', 'refunded') LIMIT 50",
+    "explanation": "Lists orders placed by premium customers (considered as 'gold' tier) in the last 30 days, excluding cancelled/refunded orders."
+  },
+  {
+    "question": "which products make the most money",
+    "sql_query": "SELECT p.name, SUM(oi.line_total) AS revenue FROM order_items oi JOIN products p ON oi.product_id = p.id JOIN orders o ON oi.order_id = o.id WHERE o.status NOT IN ('cancelled', 'refunded') GROUP BY p.name ORDER BY revenue DESC LIMIT 50",
+    "explanation": "Sums line_total per product excluding cancelled/refunded orders to find the products that generate the most revenue."
+  },
+  {
+    "question": "top 10 best selling products",
+    "sql_query": "SELECT p.name, SUM(oi.quantity) AS total_quantity_sold FROM order_items oi JOIN products p ON oi.product_id = p.id JOIN orders o ON oi.order_id = o.id WHERE o.status NOT IN ('cancelled', 'refunded') GROUP BY p.name ORDER BY total_quantity_sold DESC LIMIT 10",
+    "explanation": "Sums the quantity sold per product excluding cancelled/refunded orders to find the top 10 best selling products by sales quantity."
+  },
+  {
+    "question": "Linen Summer Dress in the products",
+    "sql_query": "SELECT * FROM products WHERE name = 'Linen Summer Dress'",
+    "explanation": "Retrieves all details for the product named 'Linen Summer Dress' from the products table."
+  },
+  {
+    "question": "Orders placed last 30 days",
+    "sql_query": "SELECT o.id, o.customer_id, o.total_amount, o.status, o.created_at FROM orders o WHERE o.created_at >= NOW() - INTERVAL '30 days' LIMIT 50",
+    "explanation": "Lists orders placed in the last 30 days, without filtering by status, and limits the result to 50 records."
+  },
+  {
+    "question": "What is the order fulfillment rate?",
+    "sql_query": "SELECT ROUND(100.0 * SUM(CASE WHEN status = 'delivered' THEN 1 ELSE 0 END) / COUNT(*), 2) AS fulfillment_rate_pct FROM orders",
+    "explanation": "Calculates the fulfillment rate as the percentage of delivered orders out of total orders."
+  },
+  {
+    "question": "Which products are low in stock?",
+    "sql_query": "SELECT p.name, p.stock FROM products p WHERE p.stock < 10 AND p.is_active = TRUE ORDER BY p.stock ASC LIMIT 50",
+    "explanation": "Selects products with stock less than 10 that are active, ordered by stock in ascending order, to identify low stock products."
+  },
+  {
+    "question": "Daily revenue trend last 7 days",
+    "sql_query": "SELECT date_trunc('day', o.created_at) AS day, SUM(oi.line_total) AS daily_revenue FROM orders o JOIN order_items oi ON o.id = oi.order_id WHERE o.status NOT IN ('cancelled', 'refunded') AND o.created_at >= NOW() - INTERVAL '7 days' GROUP BY day ORDER BY day DESC LIMIT 50",
+    "explanation": "Calculates the daily revenue for the last 7 days by summing line_total from order_items for each day, excluding cancelled/refunded orders, and orders the results by day in descending order."
+  },
+  {
+    "question": "you",
+    "sql_query": "SELECT 'I am an AI language model trained to assist with SQL queries and explanations.' AS message",
+    "explanation": "This query returns a message indicating that I am an AI language model designed to help with SQL queries and explanations."
+  },
+  {
+    "question": "Top 10 Customers My Lifetime Value",
+    "sql_query": "SELECT c.first_name || ' ' || c.last_name AS customer, SUM(o.total_amount) AS lifetime_value FROM customers c JOIN orders o ON c.id = o.customer_id WHERE o.status = 'delivered' GROUP BY c.id ORDER BY lifetime_value DESC LIMIT 10",
+    "explanation": "Sums delivered order totals per customer to find the top 10 customers by lifetime value."
+  }
+]

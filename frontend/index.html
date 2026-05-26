@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DataMind  — AI Business Agent</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=IBM+Plex+Sans:wght@300;400;600&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg:        #0a0c0f;
+      --panel:     #10131a;
+      --border:    #1e2535;
+      --border-hi: #2d3a52;
+      --text:      #c8d4e8;
+      --text-dim:  #5a6a84;
+      --text-hi:   #e8f0ff;
+      --accent:    #3d7eff;
+      --accent2:   #00d4aa;
+      --accent3:   #ff6b6b;
+      --accent4:   #ffc800;
+      --sql-bg:    #0d1520;
+      --sql-kw:    #569cd6;
+      --sql-val:   #ce9178;
+      --mono:      'IBM Plex Mono', monospace;
+      --sans:      'IBM Plex Sans', sans-serif;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 14px; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+
+    /* header */
+    header { display: flex; align-items: center; justify-content: space-between; padding: 0 24px; height: 52px; border-bottom: 1px solid var(--border); background: var(--panel); flex-shrink: 0; }
+    .logo { display: flex; align-items: center; gap: 10px; font-family: var(--mono); font-size: 15px; font-weight: 600; color: var(--text-hi); }
+    .logo-dot { width: 8px; height: 8px; background: var(--accent2); border-radius: 50%; animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(.8)} }
+    .header-meta { display: flex; align-items: center; gap: 16px; font-family: var(--mono); font-size: 11px; color: var(--text-dim); }
+    .status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent3); transition: background .3s; }
+    .status-dot.online { background: var(--accent2); }
+    .session-id { font-family: var(--mono); font-size: 10px; color: var(--text-dim); background: var(--border); padding: 3px 8px; border-radius: 3px; }
+
+    /* layout */
+    .app-body { display: flex; flex: 1; overflow: hidden; }
+
+    /* sidebar */
+    .sidebar { width: 240px; border-right: 1px solid var(--border); background: var(--panel); display: flex; flex-direction: column; padding: 16px 0; flex-shrink: 0; overflow-y: auto; }
+    .sidebar-section { padding: 0 16px 20px; }
+    .sidebar-label { font-family: var(--mono); font-size: 10px; color: var(--text-dim); letter-spacing: .1em; text-transform: uppercase; margin-bottom: 10px; }
+    .example-query { display: block; width: 100%; text-align: left; background: none; border: 1px solid var(--border); color: var(--text-dim); font-family: var(--sans); font-size: 12px; padding: 8px 10px; border-radius: 4px; margin-bottom: 6px; cursor: pointer; transition: all .15s; line-height: 1.4; }
+    .example-query:hover { border-color: var(--accent); color: var(--text); background: rgba(61,126,255,.06); }
+    .sidebar-stats { margin-top: auto; padding: 16px; border-top: 1px solid var(--border); }
+    .stat-row { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 11px; color: var(--text-dim); margin-bottom: 6px; }
+    .stat-val { color: var(--accent2); }
+
+    /* pipeline progress */
+    .pipeline { display: flex; gap: 4px; align-items: center; flex-wrap: wrap; padding: 10px 16px; border-bottom: 1px solid var(--border); background: var(--panel); min-height: 36px; flex-shrink: 0; }
+    .pipeline-step { font-family: var(--mono); font-size: 10px; padding: 3px 8px; border-radius: 3px; border: 1px solid var(--border); color: var(--text-dim); transition: all .2s; }
+    .pipeline-step.active { border-color: var(--accent); color: var(--accent); background: rgba(61,126,255,.1); }
+    .pipeline-step.done   { border-color: var(--accent2); color: var(--accent2); }
+    .pipeline-step.error  { border-color: var(--accent3); color: var(--accent3); }
+    .pipeline-step.healed { border-color: var(--accent4); color: var(--accent4); }
+    .pipeline-arrow { color: var(--border-hi); font-size: 10px; }
+
+    /* chat */
+    .chat-panel { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+    .messages { flex: 1; overflow-y: auto; padding: 24px; display: flex; flex-direction: column; gap: 20px; }
+    .messages::-webkit-scrollbar { width: 4px; }
+    .messages::-webkit-scrollbar-thumb { background: var(--border-hi); border-radius: 2px; }
+
+    /* messages */
+    .message { display: flex; gap: 12px; max-width: 900px; animation: fadeUp .25s ease; }
+    @keyframes fadeUp { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+    .message.user { flex-direction: row-reverse; align-self: flex-end; }
+    .avatar { width: 32px; height: 32px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-family: var(--mono); font-size: 11px; font-weight: 600; flex-shrink: 0; }
+    .avatar.agent { background: linear-gradient(135deg,#1a2a4a,#1e3a6e); color: var(--accent); border: 1px solid var(--border-hi); }
+    .avatar.user  { background: linear-gradient(135deg,#1a3a2a,#1e5a3e); color: var(--accent2); border: 1px solid var(--border-hi); }
+    .bubble { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 12px 16px; max-width: 100%; }
+    .message.user .bubble { background: rgba(61,126,255,.08); border-color: rgba(61,126,255,.2); }
+    .bubble-meta { font-family: var(--mono); font-size: 10px; color: var(--text-dim); margin-bottom: 6px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .type-badge { padding: 1px 6px; border-radius: 2px; font-size: 9px; letter-spacing: .05em; text-transform: uppercase; }
+    .type-badge.sql   { background: rgba(61,126,255,.15); color: var(--accent); }
+    .type-badge.rag   { background: rgba(0,212,170,.15);  color: var(--accent2); }
+    .type-badge.err   { background: rgba(255,107,107,.15);color: var(--accent3); }
+    .type-badge.cache { background: rgba(255,200,0,.15);   color: var(--accent4); }
+    .heal-badge { padding: 1px 6px; border-radius: 2px; font-size: 9px; background: rgba(255,200,0,.12); color: var(--accent4); }
+    .bubble-text { color: var(--text); line-height: 1.6; font-size: 13.5px; }
+
+    /* SQL block */
+    .sql-block { margin-top: 12px; border: 1px solid var(--border-hi); border-radius: 6px; overflow: hidden; }
+    .sql-block-header { background: var(--sql-bg); padding: 6px 12px; font-family: var(--mono); font-size: 10px; color: var(--text-dim); letter-spacing: .05em; text-transform: uppercase; display: flex; justify-content: space-between; align-items: center; }
+    .sql-code { background: var(--sql-bg); padding: 10px 14px; font-family: var(--mono); font-size: 12px; color: var(--sql-kw); overflow-x: auto; white-space: pre-wrap; word-break: break-all; }
+    .results-table { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 12px; }
+    .results-table th { background: rgba(30,37,53,.8); color: var(--text-dim); padding: 6px 10px; text-align: left; border-bottom: 1px solid var(--border); font-weight: 500; letter-spacing: .03em; text-transform: uppercase; font-size: 10px; }
+    .results-table td { padding: 6px 10px; border-bottom: 1px solid var(--border); color: var(--sql-val); }
+    .results-table tr:last-child td { border-bottom: none; }
+    .results-table tr:hover td { background: rgba(255,255,255,.02); }
+    .row-count { font-family: var(--mono); font-size: 10px; color: var(--text-dim); padding: 6px 12px; background: var(--sql-bg); border-top: 1px solid var(--border); }
+
+    /* chart */
+    .chart-container { margin-top: 12px; background: var(--sql-bg); border: 1px solid var(--border-hi); border-radius: 6px; padding: 16px; }
+    .chart-container canvas { max-height: 260px; }
+
+    /* typing */
+    .typing-indicator { display: flex; gap: 4px; padding: 4px 0; align-items: center; }
+    .typing-dot { width: 5px; height: 5px; background: var(--accent); border-radius: 50%; animation: typingBounce 1.2s infinite; }
+    .typing-dot:nth-child(2){animation-delay:.2s} .typing-dot:nth-child(3){animation-delay:.4s}
+    @keyframes typingBounce { 0%,80%,100%{transform:scale(.7);opacity:.4} 40%{transform:scale(1);opacity:1} }
+    .stream-cursor::after { content:'▊'; color:var(--accent); animation:blink .7s step-end infinite; margin-left:1px; }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+    /* audio indicator */
+    .audio-indicator { display: inline-flex; align-items: center; gap: 4px; font-family: var(--mono); font-size: 10px; color: var(--accent2); }
+    .audio-bar { width: 3px; border-radius: 2px; background: var(--accent2); animation: audioBar 0.8s ease infinite alternate; }
+    .audio-bar:nth-child(1){height:8px;animation-delay:0s}
+    .audio-bar:nth-child(2){height:14px;animation-delay:.2s}
+    .audio-bar:nth-child(3){height:10px;animation-delay:.1s}
+    @keyframes audioBar { from{opacity:.4;transform:scaleY(.5)} to{opacity:1;transform:scaleY(1)} }
+
+    /* input */
+    .input-area { border-top: 1px solid var(--border); background: var(--panel); padding: 16px 24px; flex-shrink: 0; }
+    .input-row { display: flex; gap: 10px; align-items: flex-end; }
+    .input-prompt { font-family: var(--mono); font-size: 14px; color: var(--accent); padding-bottom: 10px; flex-shrink: 0; }
+    textarea { flex: 1; background: var(--bg); border: 1px solid var(--border-hi); border-radius: 6px; color: var(--text-hi); font-family: var(--sans); font-size: 14px; padding: 10px 14px; resize: none; outline: none; line-height: 1.5; min-height: 44px; max-height: 140px; transition: border-color .2s; }
+    textarea:focus { border-color: var(--accent); }
+    textarea::placeholder { color: var(--text-dim); }
+    .input-btns { display: flex; gap: 8px; flex-shrink: 0; }
+    button.icon-btn { width: 40px; height: 40px; background: var(--bg); border: 1px solid var(--border-hi); border-radius: 6px; color: var(--text-dim); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 16px; transition: all .15s; }
+    button.icon-btn:hover { border-color: var(--accent); color: var(--accent); }
+    button.icon-btn.primary { background: var(--accent); border-color: var(--accent); color: white; }
+    button.icon-btn.primary:hover { background: #5590ff; }
+    button.icon-btn.recording { background: rgba(255,107,107,.15); border-color: var(--accent3); color: var(--accent3); animation: recordPulse 1s infinite; }
+    @keyframes recordPulse { 0%,100%{box-shadow:0 0 0 0 rgba(255,107,107,.3)} 50%{box-shadow:0 0 0 6px rgba(255,107,107,0)} }
+    .input-hints { margin-top: 8px; display: flex; gap: 16px; font-family: var(--mono); font-size: 10px; color: var(--text-dim); }
+    kbd { background: var(--border); padding: 1px 4px; border-radius: 2px; font-family: var(--mono); }
+
+    /* empty state */
+    .empty-state { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; color: var(--text-dim); text-align: center; padding: 40px; }
+    .empty-icon { font-size: 48px; opacity: .3; }
+    .empty-title { font-family: var(--mono); font-size: 16px; color: var(--text); }
+    .empty-sub { font-size: 13px; max-width: 360px; line-height: 1.6; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <span class="logo-dot"></span>
+    DataMind <span style="color:var(--text-dim);font-weight:300"> / e-commerce agent</span>
+  </div>
+  <div class="header-meta">
+    <span class="status-dot" id="statusDot"></span>
+    <span id="statusLabel">connecting…</span>
+    <span class="session-id" id="sessionLabel">session: —</span>
+  </div>
+</header>
+
+<div class="app-body">
+  <aside class="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-label">Example queries</div>
+      <button class="example-query" onclick="fillQuery(this.textContent)">Top 5 products by revenue</button>
+      <button class="example-query" onclick="fillQuery(this.textContent)">Orders placed last 30 days</button>
+      <button class="example-query" onclick="fillQuery(this.textContent)">Average order value by country</button>
+      <button class="example-query" onclick="fillQuery(this.textContent)">What is the order fulfillment rate?</button>
+      <button class="example-query" onclick="fillQuery(this.textContent)">Top 10 customers by lifetime value</button>
+      <button class="example-query" onclick="fillQuery(this.textContent)">Which products are low in stock?</button>
+      <button class="example-query" onclick="fillQuery(this.textContent)">Revenue by category this year</button>
+      <button class="example-query" onclick="fillQuery(this.textContent)">What is a premium customer?</button>
+      <button class="example-query" onclick="fillQuery(this.textContent)">Which products have never been ordered?</button>
+      <button class="example-query" onclick="fillQuery(this.textContent)">Daily revenue trend last 7 days</button>
+    </div>
+    <div class="sidebar-stats">
+      <div class="sidebar-label">Session</div>
+      <div class="stat-row"><span>Messages</span><span class="stat-val" id="msgCount">0</span></div>
+      <div class="stat-row"><span>SQL queries</span><span class="stat-val" id="sqlCount">0</span></div>
+      <div class="stat-row"><span>RAG answers</span><span class="stat-val" id="ragCount">0</span></div>
+      <div class="stat-row"><span>Cache hits</span><span class="stat-val" id="cacheCount">0</span></div>
+      <div class="stat-row"><span>Self-heals</span><span class="stat-val" id="healCount">0</span></div>
+      <div class="stat-row"><span>Charts</span><span class="stat-val" id="chartCount">0</span></div>
+    </div>
+  </aside>
+
+  <div class="chat-panel">
+    <!-- Pipeline progress bar -->
+    <div class="pipeline" id="pipeline"></div>
+
+    <div class="messages" id="messages">
+      <div class="empty-state" id="emptyState">
+        <div class="empty-icon">⬡</div>
+        <div class="empty-title">Ask anything about your data</div>
+        <div class="empty-sub">Powered by LangGraph · Semantic cache · Auto few-shot learning · Self-healing SQL</div>
+      </div>
+    </div>
+
+    <div class="input-area">
+      <div class="input-row">
+        <span class="input-prompt">&gt;</span>
+        <textarea id="queryInput" placeholder="Ask a question about your e-commerce data…" rows="1" onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+        <div class="input-btns">
+          <button class="icon-btn" id="micBtn" onclick="toggleVoice()" title="Voice input">🎙</button>
+          <button class="icon-btn primary" onclick="sendMessage()" title="Send (Enter)">↵</button>
+        </div>
+      </div>
+      <div class="input-hints">
+        <span><kbd>Enter</kbd> send</span>
+        <span><kbd>Shift+Enter</kbd> new line</span>
+        <span><kbd>↑</kbd> recall last</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── state ─────────────────────────────────────────────────────────────────────
+let ws = null;
+let sessionId = localStorage.getItem('datamind_session') || crypto.randomUUID();
+let isRecording = false;
+let mediaRecorder = null;
+let audioChunks = [];
+let lastQuery = '';
+let stats = { messages:0, sql:0, rag:0, cache:0, heal:0, chart:0 };
+let streamingBubble = null;
+let streamingText = '';
+let audioQueue = [];
+let audioPlaying = false;
+
+// Pipeline node labels
+const NODE_LABELS = {
+  classify:     'classify intent',
+  generate_sql: 'generate SQL',
+  execute_sql:  'execute SQL',
+  heal_sql:     '🔧 self-heal',
+  detect_chart: 'detect chart',
+  rag:          'RAG lookup',
+  finalize:     'finalise',
+};
+
+localStorage.setItem('datamind_session', sessionId);
+document.getElementById('sessionLabel').textContent = 'session: ' + sessionId.slice(0,8);
+
+// Pipeline state
+let activePipeline = {};
+
+// ── WebSocket ─────────────────────────────────────────────────────────────────
+function connect() {
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  const host = location.host || 'localhost:8000';
+  ws = new WebSocket(`${proto}://${host}/ws/${sessionId}`);
+  ws.onopen  = () => { document.getElementById('statusDot').classList.add('online'); document.getElementById('statusLabel').textContent = 'connected'; };
+  ws.onclose = () => { document.getElementById('statusDot').classList.remove('online'); document.getElementById('statusLabel').textContent = 'reconnecting…'; setTimeout(connect, 3000); };
+  ws.onmessage = (e) => handleWSMessage(e.data);
+  ws.onerror = () => ws.close();
+}
+
+function handleWSMessage(raw) {
+  let msg;
+  try { msg = JSON.parse(raw); } catch { return; }
+
+  switch (msg.event) {
+    case 'start':
+      activePipeline = {};
+      renderPipeline([]);
+      streamingBubble = appendStreamBubble();
+      streamingText = '';
+      break;
+
+    case 'node_start':
+      updatePipeline(msg.node, 'active');
+      break;
+
+    case 'token':
+      if (streamingBubble) {
+        streamingText += msg.data;
+        streamingBubble.querySelector('.bubble-text').textContent = streamingText;
+        scrollToBottom();
+      }
+      break;
+
+    case 'sql_result':
+      if (streamingBubble) {
+        streamingBubble.querySelector('.bubble-text').classList.remove('stream-cursor');
+        renderSQLResult(streamingBubble, msg.data);
+        setBadge(streamingBubble, 'sql', false, msg.data.heal_attempts || 0);
+        stats.sql++;
+        if (msg.data.heal_attempts > 0) stats.heal += msg.data.heal_attempts;
+        updatePipeline('execute_sql', 'done');
+      }
+      scrollToBottom();
+      break;
+
+    case 'chart':
+      if (streamingBubble) {
+        renderChart(streamingBubble, msg.data);
+        stats.chart++;
+        updateStats();
+        updatePipeline('detect_chart', 'done');
+      }
+      scrollToBottom();
+      break;
+
+    case 'cached':
+      if (streamingBubble) {
+        const d = msg.data;
+        if (d.type === 'sql') {
+          streamingBubble.querySelector('.bubble-text').textContent = d.explanation || d.answer || '';
+          renderSQLResult(streamingBubble, { sql_query: d.sql_query, explanation: d.explanation, columns: d.columns, rows: d.rows, row_count: d.row_count });
+          if (d.chart_config && d.rows) renderChart(streamingBubble, {...d.chart_config, rows: d.rows});
+          setBadge(streamingBubble, 'sql', true, 0);
+          stats.sql++;
+        } else {
+          streamingBubble.querySelector('.bubble-text').textContent = d.answer || '';
+          setBadge(streamingBubble, 'rag', true, 0);
+          stats.rag++;
+        }
+        streamingBubble.querySelector('.bubble-text').classList.remove('stream-cursor');
+        stats.cache++;
+        updateStats();
+      }
+      scrollToBottom();
+      break;
+
+    case 'done':
+      if (streamingBubble) {
+        streamingBubble.querySelector('.bubble-text').classList.remove('stream-cursor');
+        if (!streamingBubble.querySelector('.sql-block')) {
+          setBadge(streamingBubble, 'rag', false, 0);
+          stats.rag++;
+        }
+        updatePipeline('finalize', 'done');
+      }
+      updateStats();
+      scrollToBottom();
+      break;
+
+    case 'error':
+      if (streamingBubble) {
+        streamingBubble.querySelector('.bubble-text').textContent = '⚠ ' + msg.data;
+        streamingBubble.querySelector('.bubble-text').classList.remove('stream-cursor');
+        setBadge(streamingBubble, 'err', false, 0);
+      }
+      break;
+  }
+}
+
+// ── Pipeline UI ───────────────────────────────────────────────────────────────
+let pipelineNodes = [];
+
+function updatePipeline(node, status) {
+  activePipeline[node] = status;
+  if (!pipelineNodes.includes(node)) pipelineNodes.push(node);
+  renderPipeline(pipelineNodes);
+}
+
+function renderPipeline(nodes) {
+  const el = document.getElementById('pipeline');
+  if (!nodes.length) { el.innerHTML = ''; return; }
+  el.innerHTML = nodes.map((n, i) => {
+    const label = NODE_LABELS[n] || n;
+    const status = activePipeline[n] || '';
+    const isHeal = n === 'heal_sql';
+    return (i > 0 ? '<span class="pipeline-arrow">›</span>' : '') +
+      `<span class="pipeline-step ${status} ${isHeal && status === 'active' ? 'healed' : ''}">${label}</span>`;
+  }).join('');
+}
+
+// ── send ──────────────────────────────────────────────────────────────────────
+function sendMessage(text) {
+  const input = document.getElementById('queryInput');
+  const question = (text || input.value).trim();
+  if (!question || !ws || ws.readyState !== WebSocket.OPEN) return;
+  lastQuery = question;
+  input.value = '';
+  autoResize(input);
+  hideEmptyState();
+  pipelineNodes = [];
+  appendUserMessage(question);
+  ws.send(JSON.stringify({ question }));
+  stats.messages++;
+  updateStats();
+}
+
+function fillQuery(text) { document.getElementById('queryInput').value = text; document.getElementById('queryInput').focus(); }
+function handleKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+  if (e.key === 'ArrowUp' && !document.getElementById('queryInput').value) document.getElementById('queryInput').value = lastQuery;
+}
+
+// ── DOM ───────────────────────────────────────────────────────────────────────
+function hideEmptyState() { const es = document.getElementById('emptyState'); if (es) es.style.display = 'none'; }
+
+function appendUserMessage(text) {
+  document.getElementById('messages').insertAdjacentHTML('beforeend', `
+    <div class="message user">
+      <div class="avatar user">you</div>
+      <div class="bubble"><div class="bubble-text">${escHtml(text)}</div></div>
+    </div>`);
+  scrollToBottom();
+}
+
+function appendStreamBubble() {
+  const container = document.getElementById('messages');
+  container.insertAdjacentHTML('beforeend', `
+    <div class="message agent">
+      <div class="avatar agent">AI</div>
+      <div class="bubble">
+        <div class="bubble-meta">
+          <span class="type-badge"></span>
+          <span class="cache-hint"></span>
+          <span class="heal-info"></span>
+          <span class="audio-info"></span>
+        </div>
+        <div class="bubble-text stream-cursor"></div>
+      </div>
+    </div>`);
+  scrollToBottom();
+  return container.lastElementChild;
+}
+
+function setBadge(el, type, fromCache, healAttempts) {
+  el.querySelector('.type-badge').textContent  = type.toUpperCase();
+  el.querySelector('.type-badge').className    = `type-badge ${type}`;
+  el.querySelector('.cache-hint').textContent  = fromCache ? '⚡ cached' : '';
+  el.querySelector('.heal-info').innerHTML     = healAttempts > 0
+    ? `<span class="heal-badge">🔧 healed ×${healAttempts}</span>` : '';
+}
+
+function renderSQLResult(el, data) {
+  const bubble = el.querySelector('.bubble');
+  if (data.explanation) el.querySelector('.bubble-text').textContent = data.explanation;
+  const cols = data.columns || [];
+  const rows = (data.rows || []).slice(0, 20);
+  let tableHtml = '';
+  if (cols.length) {
+    tableHtml = `<table class="results-table">
+      <thead><tr>${cols.map(c=>`<th>${escHtml(c)}</th>`).join('')}</tr></thead>
+      <tbody>${rows.map(row=>`<tr>${cols.map(c=>`<td>${escHtml(String(row[c]??''))}</td>`).join('')}</tr>`).join('')}</tbody>
+    </table>
+    <div class="row-count">${data.row_count} row${data.row_count!==1?'s':''} returned</div>`;
+  }
+  bubble.insertAdjacentHTML('beforeend', `
+    <div class="sql-block">
+      <div class="sql-block-header"><span>SQL</span><span style="color:var(--accent2);font-size:9px">VALIDATED + EXECUTED</span></div>
+      <div class="sql-code">${escHtml(data.sql_query||'')}</div>
+      ${tableHtml}
+    </div>`);
+}
+
+function renderChart(el, chartData) {
+  const bubble = el.querySelector('.bubble');
+  const { type, x_col, y_cols, rows } = chartData;
+  if (!rows || !rows.length || !x_col || !y_cols || !y_cols.length) return;
+
+  const labels = rows.map(r => String(r[x_col] ?? ''));
+  const palette = ['rgba(61,126,255,0.8)','rgba(0,212,170,0.8)','rgba(255,107,107,0.8)'];
+
+  const datasets = y_cols.map((col, i) => ({
+    label: col,
+    data: rows.map(r => parseFloat(r[col]) || 0),
+    backgroundColor: palette[i % palette.length].replace('0.8','0.25'),
+    borderColor: palette[i % palette.length],
+    borderWidth: 2,
+    tension: 0.35,
+    fill: type === 'line',
+    pointRadius: type === 'line' ? 3 : 0,
+  }));
+
+  const container = document.createElement('div');
+  container.className = 'chart-container';
+  const canvas = document.createElement('canvas');
+  container.appendChild(canvas);
+  bubble.appendChild(container);
+
+  new Chart(canvas, {
+    type,
+    data: { labels, datasets },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: y_cols.length > 1, labels: { color: '#c8d4e8', font: { family: 'IBM Plex Mono', size: 11 } } },
+        tooltip: { mode: 'index' },
+      },
+      scales: {
+        x: { ticks: { color: '#5a6a84', font: { family: 'IBM Plex Mono', size: 10 } }, grid: { color: '#1e2535' } },
+        y: { ticks: { color: '#5a6a84', font: { family: 'IBM Plex Mono', size: 10 } }, grid: { color: '#1e2535' } },
+      },
+    },
+  });
+}
+
+// ── Audio queue ───────────────────────────────────────────────────────────────
+function enqueueAudio(base64mp3) {
+  audioQueue.push(base64mp3);
+  if (!audioPlaying) playNextAudio();
+}
+
+function playNextAudio() {
+  if (!audioQueue.length) { audioPlaying = false; return; }
+  audioPlaying = true;
+  const b64 = audioQueue.shift();
+  const audio = new Audio('data:audio/mp3;base64,' + b64);
+  audio.onended = playNextAudio;
+  audio.onerror = playNextAudio;
+  audio.play().catch(playNextAudio);
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function scrollToBottom() { const m = document.getElementById('messages'); m.scrollTop = m.scrollHeight; }
+function autoResize(el) { el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 140) + 'px'; }
+function updateStats() {
+  document.getElementById('msgCount').textContent   = stats.messages;
+  document.getElementById('sqlCount').textContent   = stats.sql;
+  document.getElementById('ragCount').textContent   = stats.rag;
+  document.getElementById('cacheCount').textContent = stats.cache;
+  document.getElementById('healCount').textContent  = stats.heal;
+  document.getElementById('chartCount').textContent = stats.chart;
+}
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── Voice ─────────────────────────────────────────────────────────────────────
+async function toggleVoice() {
+  if (isRecording) return stopRecording();
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+    audioChunks = [];
+    mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+    mediaRecorder.onstop = sendVoice;
+    mediaRecorder.start();
+    isRecording = true;
+    document.getElementById('micBtn').classList.add('recording');
+  } catch(err) { alert('Microphone access denied: ' + err.message); }
+}
+
+function stopRecording() {
+  if (mediaRecorder) mediaRecorder.stop();
+  isRecording = false;
+  document.getElementById('micBtn').classList.remove('recording');
+}
+
+async function sendVoice() {
+  const blob = new Blob(audioChunks, { type: 'audio/webm' });
+  const fd = new FormData();
+  fd.append('file', blob, 'audio.webm');
+  hideEmptyState();
+  const thinkingEl = appendStreamBubble();
+  thinkingEl.querySelector('.bubble-text').classList.remove('stream-cursor');
+  thinkingEl.querySelector('.bubble-text').innerHTML =
+    `<div class="typing-indicator"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div>`;
+  try {
+    const resp = await fetch(`/voice/chat/${sessionId}`, { method: 'POST', body: fd });
+    if (resp.status === 422) {
+      const err = await resp.json();
+      thinkingEl.querySelector('.bubble-text').textContent = '🎙 ' + (err.detail || 'Could not understand audio. Hold the mic button while speaking.');
+      setBadge(thinkingEl, 'err', false, 0);
+      scrollToBottom();
+      return;
+    }
+    const data = await resp.json();
+    // Voice question label
+    thinkingEl.querySelector('.bubble-meta').insertAdjacentHTML('afterbegin',
+      `<div style="font-size:11px;color:var(--text-dim);margin-bottom:4px">🎙 "${escHtml(data.question)}"</div>`);
+
+    if (data.agent_type === 'sql' && data.columns && data.columns.length) {
+      // Render full SQL result (explanation + table + chart)
+      thinkingEl.querySelector('.bubble-text').textContent = data.explanation || data.answer || '';
+      renderSQLResult(thinkingEl, {
+        sql_query:   data.sql_query,
+        explanation: data.explanation,
+        columns:     data.columns,
+        rows:        data.rows,
+        row_count:   data.row_count,
+      });
+      setBadge(thinkingEl, 'sql', false, 0);
+      stats.sql++;
+      if (data.chart_data) {
+        renderChart(thinkingEl, data.chart_data);
+        stats.chart++;
+      }
+    } else {
+      // RAG text answer
+      thinkingEl.querySelector('.bubble-text').textContent = data.answer || 'No answer.';
+      setBadge(thinkingEl, data.agent_type || 'rag', false, 0);
+      stats.rag++;
+    }
+    thinkingEl.querySelector('.bubble-text').classList.remove('stream-cursor');
+
+    // Stream TTS chunks
+    if (data.audio_chunks && data.audio_chunks.length) {
+      const audioEl = thinkingEl.querySelector('.audio-info');
+      audioEl.innerHTML = `<span class="audio-indicator"><span class="audio-bar"></span><span class="audio-bar"></span><span class="audio-bar"></span> playing</span>`;
+      data.audio_chunks.forEach(c => enqueueAudio(c));
+    }
+    stats.messages++;
+    updateStats();
+  } catch(err) {
+    thinkingEl.querySelector('.bubble-text').textContent = '⚠ Voice request failed: ' + err.message;
+  }
+  scrollToBottom();
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+connect();
+</script>
+</body>
+</html>

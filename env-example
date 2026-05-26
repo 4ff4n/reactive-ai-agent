@@ -1,0 +1,39 @@
+# OpenAI
+OPENAI_API_KEY=sk-
+
+# Database
+POSTGRES_USER=agent
+POSTGRES_PASSWORD=agentpass
+POSTGRES_DB=ecommerce
+DATABASE_URL=postgresql+asyncpg://agent:agentpass@localhost:5432/ecommerce
+
+# Redis
+REDIS_URL=redis://localhost:6379
+
+# LangFuse (get keys from https://cloud.langfuse.com)
+LANGFUSE_PUBLIC_KEY=pk-
+LANGFUSE_SECRET_KEY=sk-
+LANGFUSE_HOST=https://cloud.langfuse.com
+LANGFUSE_ENABLED=true
+
+# JWT Auth
+JWT_SECRET_KEY=your-long-random-secret-here
+JWT_ALGORITHM=HS256
+JWT_EXPIRE_MINUTES=480
+
+# App settings
+APP_ENV=development
+LOG_LEVEL=INFO
+SESSION_TTL_SECONDS=1800
+MEMORY_WINDOW_SIZE=6
+SQL_MAX_RETRIES=2
+
+
+# Advanced features
+SEMANTIC_CACHE_ENABLED=true
+SEMANTIC_CACHE_THRESHOLD=0.87
+FEW_SHOT_TOP_K=3
+SQL_MAX_RETRIES=2
+TTS_STREAMING_ENABLED=true
+TTS_CHUNK_WORDS=25
+
